@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Notebook cache
+.ipynb_checkpoints/
+
+# Generated analysis outputs
+fig/
+tables/
+results_story/
+
+# Local editor and OS files
+.vscode/
+Thumbs.db
+Desktop.ini
