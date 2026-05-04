@@ -7,7 +7,7 @@ This repository contains the core research code used to generate the benchmark m
 - `eco_efficiency_model_pipeline.ipynb`  
   Main notebook for model training, benchmarking, prediction, and scenario-output export.
 
-- `eco_efficiency_results_revised.py`  
+- `eco_efficiency_results.py`
   Revised results-story script for descriptive tables, trend figures, heatmaps, inequality metrics, rank persistence, and Section 4.3 perturbation interpretation assets.
 
 - `requirements.txt`  
@@ -45,7 +45,7 @@ The repository should normally track only the core research assets:
 
 - `data.xlsx`
 - `eco_efficiency_model_pipeline.ipynb`
-- `eco_efficiency_results_revised.py`
+- `eco_efficiency_results.py`
 - `README.md`
 - `requirements.txt`
 - `.gitignore`
@@ -53,7 +53,7 @@ The repository should normally track only the core research assets:
 ## Suggested run order
 
 1. Run `eco_efficiency_model_pipeline.ipynb` for the main modelling workflow and export `Scenario_analysis_full_2023.xlsx` to `tables/`.
-2. Run `eco_efficiency_results_revised.py` for the revised descriptive outputs and Section 4.3 interpretation tables and figures.
+2. Run `eco_efficiency_results.py` for the revised descriptive outputs and Section 4.3 interpretation tables and figures.
 
 ## Reproducibility
 
