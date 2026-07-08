@@ -8,7 +8,8 @@ results can move beyond ranking and toward management-oriented explanation.
 
 Key additions for Section 4.3:
 - Province story profile table
-- Representative case selection table (Scheme B: Hubei + Xinjiang + Jilin by default)
+- Representative case selection table aligned with the revised manuscript
+  (Jilin + Gansu + Ningxia by default)
 - Representative case response-profile figure
 
 CRITICAL LOGIC FOR SECTION 4.3
@@ -68,6 +69,40 @@ Y_COL = "efficiency"
 FEATURES = ["TPAM", "EIA", "CS", "AFA", "PU", "ADY", "PFU", "NRP", "GAO", "CEA"]
 STORY_FEATURES = ["AFA", "PU", "ADY", "PFU", "EIA", "CS", "GAO", "CEA", "NRP", "TPAM"]
 
+PROVINCES_BY_ID = [
+    "Beijing",
+    "Tianjin",
+    "Hebei",
+    "Shanxi",
+    "Inner Mongolia",
+    "Liaoning",
+    "Jilin",
+    "Heilongjiang",
+    "Shanghai",
+    "Jiangsu",
+    "Zhejiang",
+    "Anhui",
+    "Fujian",
+    "Jiangxi",
+    "Shandong",
+    "Henan",
+    "Hubei",
+    "Hunan",
+    "Guangdong",
+    "Guangxi",
+    "Hainan",
+    "Chongqing",
+    "Sichuan",
+    "Guizhou",
+    "Yunnan",
+    "Shaanxi",
+    "Gansu",
+    "Qinghai",
+    "Ningxia",
+    "Xinjiang",
+]
+PROVINCE_NAME_BY_ID = {i + 1: name for i, name in enumerate(PROVINCES_BY_ID)}
+
 OUT_DIR = "results_story"
 SEED = 42
 PERTURBATION_YEAR = None
@@ -79,13 +114,14 @@ USE_ROBUST_HEATMAP = False
 ROBUST_Q = (0.02, 0.98)
 
 # Representative-case mode for Section 4.3 discussion.
-# "fixed_scheme_b" uses the user-chosen trio: Hubei + Xinjiang + Jilin.
+# "fixed_manuscript_cases" uses the revised manuscript trio:
+# Jilin + Gansu + Ningxia.
 # "auto" falls back to data-driven selection.
-REPRESENTATIVE_CASE_MODE = "fixed_scheme_b"
+REPRESENTATIVE_CASE_MODE = "fixed_manuscript_cases"
 FORCED_REPRESENTATIVE_CASES = {
-    "Priority follow-up case": "Hubei",
-    "Direction-sensitive case": "Xinjiang",
-    "Low-return case": "Jilin",
+    "Priority follow-up case": "Jilin",
+    "Direction-sensitive case": "Gansu",
+    "Low-return case": "Ningxia",
 }
 
 
@@ -186,6 +222,18 @@ def _get_heatmap_limits(data: np.ndarray) -> Tuple[float, float]:
     return float(np.nanmin(data)), float(np.nanmax(data))
 
 
+def _province_labels_for_ids(ids: List[int]) -> List[str]:
+    labels = []
+    for province_id in ids:
+        try:
+            key = int(province_id)
+        except (TypeError, ValueError):
+            labels.append(str(province_id))
+            continue
+        labels.append(PROVINCE_NAME_BY_ID.get(key, str(province_id)))
+    return labels
+
+
 def _pretty_perturbation_label(name: str) -> str:
     label_map = {
         "P1_10pct": "P1 (10%)",
@@ -250,9 +298,9 @@ def make_indicator_assets(df: pd.DataFrame, dirs: Dict[str, str]) -> None:
     vmin, vmax = _get_heatmap_limits(data)
     n_rows, n_cols = data.shape
     years = pivot.columns.astype(int).to_list()
-    provinces = pivot.index.to_list()
+    provinces = _province_labels_for_ids(pivot.index.to_list())
 
-    fig, ax = plt.subplots(figsize=(7.8, 6.2))
+    fig, ax = plt.subplots(figsize=(8.5, 6.8))
     im = ax.imshow(
         data,
         aspect="auto",
@@ -267,7 +315,7 @@ def make_indicator_assets(df: pd.DataFrame, dirs: Dict[str, str]) -> None:
     ax.set_xticks(xticks)
     ax.set_xticklabels([str(years[i]) for i in xticks], rotation=90)
     ax.set_yticks(np.arange(n_rows))
-    ax.set_yticklabels(provinces)
+    ax.set_yticklabels(provinces, fontsize=7.5)
     ax.set_xticks(np.arange(-0.5, n_cols, 1), minor=True)
     ax.set_yticks(np.arange(-0.5, n_rows, 1), minor=True)
     ax.grid(which="minor", linewidth=0.25, alpha=0.25)
@@ -277,7 +325,7 @@ def make_indicator_assets(df: pd.DataFrame, dirs: Dict[str, str]) -> None:
     cbar.set_label("Eco-efficiency (Super-SBM score)")
     cbar.ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
 
-    fig.subplots_adjust(left=0.24, bottom=0.16, right=0.96, top=0.90)
+    fig.subplots_adjust(left=0.28, bottom=0.15, right=0.96, top=0.92)
     save_figure(fig, os.path.join(dirs["fig"], f"Fig_4_1_heatmap_province_year.{FIG_FMT}"))
 
     ineq = d.groupby(T_COL)[Y_COL].apply(
@@ -548,7 +596,7 @@ def _selection_reason_direction(row: pd.Series) -> str:
 
 def _selection_reason_forced(row: pd.Series, case_type: str) -> str:
     return (
-        f"Fixed Scheme B case for discussion ({case_type}); quadrant_P1={row['quadrant_P1']}; "
+        f"Fixed manuscript case for discussion ({case_type}); quadrant_P1={row['quadrant_P1']}; "
         f"dominant={row['dominant_scenario']}; mean_delta_3scn={row['mean_delta_3scn']:.6f}; "
         f"response_spread={row['response_spread']:.6f}."
     )
@@ -566,7 +614,7 @@ def _select_representative_cases(profile: pd.DataFrame) -> pd.DataFrame:
 
     case_order = ["Priority follow-up case", "Direction-sensitive case", "Low-return case"]
 
-    if REPRESENTATIVE_CASE_MODE == "fixed_scheme_b":
+    if REPRESENTATIVE_CASE_MODE == "fixed_manuscript_cases":
         frames = []
         missing = []
         for case_type in case_order:

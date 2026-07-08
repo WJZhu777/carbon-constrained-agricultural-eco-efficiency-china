@@ -10,6 +10,15 @@ This repository contains the core research code used to generate the benchmark m
 - `eco_efficiency_results.py`
   Revised results-story script for descriptive tables, trend figures, heatmaps, inequality metrics, rank persistence, and Section 4.3 perturbation interpretation assets.
 
+- `revision_minimal_robustness.py`
+  Revision-stage robustness analyses for predictor ablation, panel-aware validation, alternative-frontier checks, expanded perturbation validation, and CEA-exclusion diagnostics.
+
+- `postprocess_revision_outputs.py`
+  Post-processing utilities for revision outputs, including corrected CEA effective sample counts and canonical panel-validation aggregation.
+
+- `cea_emission_factor_sensitivity.py`
+  CEA emission-factor sensitivity analysis using the revised CEA accounting coefficients.
+
 - `requirements.txt`  
   Python dependencies required to run the workflow.
 
@@ -39,6 +48,8 @@ The workflow writes figures and tables to:
 
 These directories mainly store generated outputs and are excluded from version control by `.gitignore`.
 
+The formal revision package stores selected supplementary Excel outputs separately as Online Resource workbooks. The repository is kept focused on the code, input data, and scripts needed to reproduce those outputs.
+
 ## Recommended tracked files
 
 The repository should normally track only the core research assets:
@@ -46,6 +57,9 @@ The repository should normally track only the core research assets:
 - `data.xlsx`
 - `eco_efficiency_model_pipeline.ipynb`
 - `eco_efficiency_results.py`
+- `revision_minimal_robustness.py`
+- `postprocess_revision_outputs.py`
+- `cea_emission_factor_sensitivity.py`
 - `README.md`
 - `requirements.txt`
 - `.gitignore`
@@ -53,7 +67,10 @@ The repository should normally track only the core research assets:
 ## Suggested run order
 
 1. Run `eco_efficiency_model_pipeline.ipynb` for the main modelling workflow and export `Scenario_analysis_full_2023.xlsx` to `tables/`.
-2. Run `eco_efficiency_results.py` for the revised descriptive outputs and Section 4.3 interpretation tables and figures.
+2. Run `revision_minimal_robustness.py` for the revision-stage robustness and validation outputs.
+3. Run `postprocess_revision_outputs.py` to refresh corrected summary sheets for CEA effective N and panel-validation aggregation.
+4. Run `cea_emission_factor_sensitivity.py` for the CEA emission-factor sensitivity workbook.
+5. Run `eco_efficiency_results.py` for the revised descriptive outputs and Section 4.3 interpretation tables and figures.
 
 ## Reproducibility
 
