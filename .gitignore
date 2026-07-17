@@ -10,6 +10,11 @@ fig/
 tables/
 results_story/
 
+# Local correction provenance archives (not part of the public release)
+data_before_eia_correction_20260716.xlsx
+data_before_efficiency_refresh_20260716.xlsx
+effective_irrigated_area_NBS_2000_2024.xlsx
+
 # Local editor and OS files
 .idea/
 .vscode/

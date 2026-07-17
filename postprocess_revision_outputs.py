@@ -11,15 +11,6 @@ ROOT = Path(__file__).resolve().parent
 TABLES_DIR = ROOT / "tables"
 
 
-def _safe_corr(a, b, method: str = "pearson") -> float:
-    s1 = pd.Series(a, dtype="float64")
-    s2 = pd.Series(b, dtype="float64")
-    mask = s1.notna() & s2.notna()
-    if mask.sum() < 3:
-        return np.nan
-    return float(s1[mask].corr(s2[mask], method=method))
-
-
 def _canonical_model(name: str) -> str:
     name = str(name).strip()
     if name.startswith("Ensemble("):
@@ -43,193 +34,6 @@ def _extract_meta(name: str) -> str | float:
 
 def _std_or_zero(values: pd.Series) -> float:
     return float(values.std(ddof=1)) if len(values) > 1 else 0.0
-
-
-def fix_cea_effective_n(tables_dir: Path = TABLES_DIR, year_focus: int = 2023) -> Path:
-    """Correct CEA-exclusion summaries to use paired effective samples."""
-    path = tables_dir / "CEA_exclusion_robustness.xlsx"
-    sheets = pd.read_excel(path, sheet_name=None)
-    out = sheets["all_scores_pooled"].copy()
-
-    out["score_pair_valid"] = out["score_baseline"].notna() & out["score_no_cea"].notna()
-    out["rank_baseline_year_all"] = out.groupby("Year")["score_baseline"].rank(
-        method="average", ascending=False
-    )
-
-    out["rank_baseline_year"] = np.nan
-    out["rank_no_cea_year"] = np.nan
-    valid = out["score_pair_valid"]
-    out.loc[valid, "rank_baseline_year"] = out.loc[valid].groupby("Year")[
-        "score_baseline"
-    ].rank(method="average", ascending=False)
-    out.loc[valid, "rank_no_cea_year"] = out.loc[valid].groupby("Year")[
-        "score_no_cea"
-    ].rank(method="average", ascending=False)
-    out["rank_diff_year"] = out["rank_no_cea_year"] - out["rank_baseline_year"]
-    out["abs_rank_diff_year"] = out["rank_diff_year"].abs()
-
-    year_rows = []
-    for yr, g in out.groupby("Year"):
-        ge = g[g["score_pair_valid"]].copy()
-        year_rows.append(
-            {
-                "Year": int(yr),
-                "N_effective": int(len(ge)),
-                "N_total": int(len(g)),
-                "N_missing_no_cea": int(len(g) - len(ge)),
-                "pearson_score": _safe_corr(ge["score_baseline"], ge["score_no_cea"]),
-                "spearman_score": _safe_corr(
-                    ge["score_baseline"], ge["score_no_cea"], method="spearman"
-                ),
-                "spearman_rank_common": _safe_corr(
-                    ge["rank_baseline_year"], ge["rank_no_cea_year"], method="pearson"
-                ),
-                "mean_abs_score_diff": float(ge["abs_score_diff"].mean()),
-                "median_abs_score_diff": float(ge["abs_score_diff"].median()),
-                "mean_abs_rank_diff_common": float(ge["abs_rank_diff_year"].mean()),
-                "median_abs_rank_diff_common": float(ge["abs_rank_diff_year"].median()),
-            }
-        )
-    year_summary = pd.DataFrame(year_rows).sort_values("Year").reset_index(drop=True)
-
-    prov_rows = []
-    for province, g in out.groupby("Province"):
-        ge = g[g["score_pair_valid"]].copy()
-        prov_rows.append(
-            {
-                "Province": province,
-                "N_effective_years": int(len(ge)),
-                "N_total_years": int(len(g)),
-                "N_missing_no_cea": int(len(g) - len(ge)),
-                "longrun_mean_baseline_all": float(g["score_baseline"].mean()),
-                "longrun_mean_baseline": float(ge["score_baseline"].mean())
-                if len(ge)
-                else np.nan,
-                "longrun_mean_no_cea": float(ge["score_no_cea"].mean())
-                if len(ge)
-                else np.nan,
-                "mean_abs_score_diff": float(ge["abs_score_diff"].mean())
-                if len(ge)
-                else np.nan,
-            }
-        )
-    prov_long = pd.DataFrame(prov_rows)
-    valid_prov = prov_long["longrun_mean_no_cea"].notna()
-    prov_long["rank_baseline_longrun_all"] = prov_long["longrun_mean_baseline_all"].rank(
-        method="average", ascending=False
-    )
-    prov_long["rank_baseline_longrun"] = np.nan
-    prov_long["rank_no_cea_longrun"] = np.nan
-    prov_long.loc[valid_prov, "rank_baseline_longrun"] = prov_long.loc[
-        valid_prov, "longrun_mean_baseline"
-    ].rank(method="average", ascending=False)
-    prov_long.loc[valid_prov, "rank_no_cea_longrun"] = prov_long.loc[
-        valid_prov, "longrun_mean_no_cea"
-    ].rank(method="average", ascending=False)
-    prov_long["rank_diff_longrun"] = (
-        prov_long["rank_no_cea_longrun"] - prov_long["rank_baseline_longrun"]
-    )
-    prov_long["abs_rank_diff_longrun"] = prov_long["rank_diff_longrun"].abs()
-    prov_long = prov_long.sort_values(
-        ["abs_rank_diff_longrun", "mean_abs_score_diff"], ascending=[False, False]
-    ).reset_index(drop=True)
-
-    focus_2023 = (
-        out[out["Year"] == year_focus]
-        .copy()
-        .sort_values(["score_pair_valid", "abs_rank_diff_year", "abs_score_diff"], ascending=[False, False, False])
-        .reset_index(drop=True)
-    )
-    focus_eff = focus_2023[focus_2023["score_pair_valid"]].copy()
-    out_eff = out[out["score_pair_valid"]].copy()
-    prov_eff = prov_long[prov_long["longrun_mean_no_cea"].notna()].copy()
-
-    overall_summary = pd.DataFrame(
-        [
-            {
-                "comparison_level": "all_province_year_rows",
-                "N_effective": int(len(out_eff)),
-                "N_total": int(len(out)),
-                "N_missing_no_cea": int(len(out) - len(out_eff)),
-                "pearson_score": _safe_corr(out_eff["score_baseline"], out_eff["score_no_cea"]),
-                "spearman_score": _safe_corr(
-                    out_eff["score_baseline"], out_eff["score_no_cea"], method="spearman"
-                ),
-                "spearman_rank_common": np.nan,
-                "mean_abs_score_diff": float(out_eff["abs_score_diff"].mean()),
-                "median_abs_score_diff": float(out_eff["abs_score_diff"].median()),
-                "mean_abs_rank_diff_common": np.nan,
-                "median_abs_rank_diff_common": np.nan,
-            },
-            {
-                "comparison_level": f"year_{year_focus}",
-                "N_effective": int(len(focus_eff)),
-                "N_total": int(len(focus_2023)),
-                "N_missing_no_cea": int(len(focus_2023) - len(focus_eff)),
-                "pearson_score": _safe_corr(focus_eff["score_baseline"], focus_eff["score_no_cea"]),
-                "spearman_score": _safe_corr(
-                    focus_eff["score_baseline"], focus_eff["score_no_cea"], method="spearman"
-                ),
-                "spearman_rank_common": _safe_corr(
-                    focus_eff["rank_baseline_year"],
-                    focus_eff["rank_no_cea_year"],
-                    method="pearson",
-                ),
-                "mean_abs_score_diff": float(focus_eff["abs_score_diff"].mean()),
-                "median_abs_score_diff": float(focus_eff["abs_score_diff"].median()),
-                "mean_abs_rank_diff_common": float(focus_eff["abs_rank_diff_year"].mean()),
-                "median_abs_rank_diff_common": float(focus_eff["abs_rank_diff_year"].median()),
-            },
-            {
-                "comparison_level": "province_longrun_mean",
-                "N_effective": int(len(prov_eff)),
-                "N_total": int(len(prov_long)),
-                "N_missing_no_cea": int(len(prov_long) - len(prov_eff)),
-                "pearson_score": _safe_corr(
-                    prov_eff["longrun_mean_baseline"], prov_eff["longrun_mean_no_cea"]
-                ),
-                "spearman_score": _safe_corr(
-                    prov_eff["longrun_mean_baseline"],
-                    prov_eff["longrun_mean_no_cea"],
-                    method="spearman",
-                ),
-                "spearman_rank_common": _safe_corr(
-                    prov_eff["rank_baseline_longrun"],
-                    prov_eff["rank_no_cea_longrun"],
-                    method="pearson",
-                ),
-                "mean_abs_score_diff": float(
-                    (prov_eff["longrun_mean_no_cea"] - prov_eff["longrun_mean_baseline"]).abs().mean()
-                ),
-                "median_abs_score_diff": float(
-                    (prov_eff["longrun_mean_no_cea"] - prov_eff["longrun_mean_baseline"]).abs().median()
-                ),
-                "mean_abs_rank_diff_common": float(prov_eff["abs_rank_diff_longrun"].mean()),
-                "median_abs_rank_diff_common": float(prov_eff["abs_rank_diff_longrun"].median()),
-            },
-        ]
-    )
-
-    readme = pd.DataFrame(
-        {
-            "Notes": [
-                "N_effective counts paired rows with both score_baseline and score_no_cea available.",
-                "N_total is the full comparison universe before excluding infeasible no-CEA scores.",
-                "Rank differences are computed within the common effective subset for each year/province summary.",
-                "rank_baseline_year_all and rank_baseline_longrun_all are retained only for audit context.",
-            ]
-        }
-    )
-
-    with pd.ExcelWriter(path, engine="openpyxl") as writer:
-        out.to_excel(writer, sheet_name="all_scores_pooled", index=False)
-        year_summary.to_excel(writer, sheet_name="year_summary", index=False)
-        prov_long.to_excel(writer, sheet_name="province_longrun", index=False)
-        focus_2023.to_excel(writer, sheet_name=f"focus_{year_focus}_rank_shift", index=False)
-        overall_summary.to_excel(writer, sheet_name="overall_summary", index=False)
-        readme.to_excel(writer, sheet_name="ReadMe", index=False)
-
-    return path
 
 
 def fix_panel_reaggregation(tables_dir: Path = TABLES_DIR) -> Path:
@@ -358,9 +162,7 @@ def fix_panel_reaggregation(tables_dir: Path = TABLES_DIR) -> Path:
 
 
 def main() -> None:
-    cea_path = fix_cea_effective_n()
     panel_path = fix_panel_reaggregation()
-    print(f"[postprocess] updated {cea_path}")
     print(f"[postprocess] updated {panel_path}")
 
 
