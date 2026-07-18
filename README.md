@@ -1,131 +1,171 @@
-# Eco-efficiency analysis code
+# Carbon-constrained agricultural eco-efficiency in China
 
-This repository contains the core machine-learning, scenario-screening, and reporting code used in the manuscript. The baseline `efficiency` labels are calculated separately in MATLAB and are read by the Python workflow as fixed inputs.
+This repository contains the data, code, and computational records used in the study **“Carbon-constrained agricultural eco-efficiency indicators for monitoring and directional screening in China.”**
 
-> **Current revision status (2026-07-17):** `data.xlsx` contains the corrected effective irrigated area (`EIA`), carbon emissions from agricultural activities (`CEA`), and all 720 refreshed MATLAB global-frontier Super-SBM labels. The main notebook, independent predictor-ablation script, descriptive-results script, and five-year alternative-frontier analysis have been rerun successfully. The refreshed outputs have been synchronized to the clean manuscript, marked manuscript, response letter, Online Resource 1, and Online Resource 2. The formal files are stored in `../../05_final_resubmission_package/`.
+The analysis covers 30 mainland Chinese provinces from 2000 to 2023. It combines a non-oriented undesirable-output Super-SBM model with machine-learning surrogate models to support efficiency monitoring, validation-aware model comparison, and standardized directional screening.
 
-## Files
+## Analytical scope
 
-- `eco_efficiency_model_pipeline.ipynb`  
-  Main notebook for model training, benchmarking, prediction, and scenario-output export.
+The repository supports four connected tasks:
 
-- `eco_efficiency_results.py`
-  Revised results-story script for descriptive tables, trend figures, heatmaps, inequality metrics, rank persistence, and Section 4.3 perturbation interpretation assets.
+1. use MATLAB-generated global-frontier Super-SBM scores as the reference efficiency labels;
+2. compare machine-learning models for approximating those labels;
+3. evaluate model behavior under random, rolling time-forward, province-block, and predictor-ablation designs;
+4. examine standardized input-output perturbations and alternative-frontier sensitivity.
 
-- `revision_minimal_robustness.py`
-  Revision-stage predictor-ablation analysis.
+The machine-learning layer is a surrogate for DEA-generated labels. Its outputs are intended for monitoring, diagnostic comparison, and directional screening. They are not causal estimates, calibrated policy simulations, or evidence of policy effectiveness.
 
-- `postprocess_revision_outputs.py`
-  Post-processing utility for canonical panel-validation aggregation.
+## Repository contents
 
-- `super_sbm_rolling_frontier.py`
-  Independently validated Python implementation of the non-oriented
-  undesirable-output Super-SBM under VRS. It first reconstructs all 720
-  MATLAB pooled-frontier labels and only then computes the centered five-year
-  local-window frontier (target year +/-2, truncated at the sample endpoints).
+| Path | Purpose |
+|---|---|
+| `data.xlsx` | Canonical 30-province, 2000-2023 analysis panel, including the MATLAB Super-SBM label in `efficiency`. |
+| `Global_Un_Super_SBM_VRS_Efficiency_Gt.csv` | MATLAB export of the 720 global-frontier Super-SBM scores, keyed by province ID and year. |
+| `Global_Un_Super_SBM_VRS_Info.txt` | Computational settings for the MATLAB Super-SBM run. |
+| `eco_efficiency_model_pipeline.ipynb` | Main workflow for model comparison, validation, surrogate construction, and directional-screening outputs. |
+| `predictor_ablation_analysis.py` | Predictor-group ablation under random and rolling time-forward evaluation. |
+| `panel_validation_postprocess.py` | Canonical aggregation of panel-aware validation outputs. It is called by the main notebook. |
+| `eco_efficiency_results.py` | Descriptive indicators, figures, inequality and rank-persistence summaries, and province-level screening profiles. |
+| `super_sbm_rolling_frontier.py` | Independent Python reconstruction check and centered five-year local-window frontier analysis. |
+| `requirements.txt` | Python dependencies. |
 
-- `Global_Un_Super_SBM_VRS_Efficiency_Gt.csv`
-  Authoritative MATLAB export containing the refreshed 720 `EG_V(t)` scores keyed by province ID and year.
+Generated figures and workbooks are written to `fig/`, `tables/`, and `results_story/`. These directories are excluded from version control because they can be regenerated from the tracked inputs and code.
 
-- `Global_Un_Super_SBM_VRS_Info.txt`
-  MATLAB model-settings record for the refreshed global-frontier run.
+The principal generated workbooks include:
 
-- `requirements.txt`  
-  Python dependencies required to run the workflow.
+| Output | Contents |
+|---|---|
+| `tables/cv_summary.xlsx` | Repeated cross-validation summaries. |
+| `tables/test_results.xlsx` | Held-out random-test performance. |
+| `tables/Panel_dependence_robustness_checks.xlsx` | Random, rolling time-forward, and province-block validation details. |
+| `tables/Panel_dependence_robustness_checks_reaggregated.xlsx` | Canonical model-name aggregation across panel-validation outputs. |
+| `tables/Surrogate_predictor_ablation_revision.xlsx` | Predictor-group ablation summaries and split-level results. |
+| `tables/Scenario_analysis_full_2023.xlsx` | Province-level outputs for the three standardized 2023 perturbations. |
+| `tables/Alternative_frontier_robustness_revision.xlsx` | Pooled-frontier reconstruction and five-year local-window sensitivity results. |
 
-## Input data
+## Data structure
 
-The main workflow reads the base dataset from:
+`data.xlsx` contains 720 province-year observations. The principal analytical fields are:
 
-```python
-./data.xlsx
+| Field | Definition | Unit / coding |
+|---|---|---|
+| `ID` | Province identifier | 1-30 |
+| `Year` | Observation year | 2000-2023 |
+| `TPAM` | Total power of agricultural machinery | million kW |
+| `EIA` | Effective irrigated area | 1,000 ha |
+| `CS` | Crops sown | 1,000 ha |
+| `AFA` | Agricultural fertilizer application | 10,000 tonnes |
+| `PU` | Pesticide use | 10,000 tonnes |
+| `ADY` | Agricultural diesel use | 10,000 tonnes |
+| `PFU` | Plastic film use | 10,000 tonnes |
+| `NRP` | Primary-industry employment; legacy code name for manuscript variable `PIE` | 10,000 persons |
+| `GAO` | Constant-price gross output value of crop farming, base year 2000 | 100 million yuan |
+| `CEA` | Crop-related agricultural carbon emissions | 10,000 tonnes C |
+| `efficiency` | Global-frontier Super-SBM score | dimensionless |
+
+The carbon-emission indicator is constructed from fertilizer, pesticide, plastic-film, diesel, irrigation, and sown-area activities. Detailed definitions, coefficients, and source documentation are provided in the associated article and Online Resources.
+
+## Data provenance
+
+- `GAO` is obtained from the National Bureau of Statistics of China. It is already expressed as the constant-price gross output value of crop farming with 2000 as the base year; the code does not apply an additional deflator.
+- Other agricultural-activity series are compiled from official statistical sources, including the National Bureau of Statistics of China and the *China Rural Statistical Yearbook*.
+- Primary-industry employment is obtained from [Data Pipixia](https://ppmandata.net/). The analysis workbook retains the legacy field name `NRP`, while the associated article uses the more accurate abbreviation `PIE`.
+- `CEA` is an accounting variable calculated from the six documented crop-related activity groups rather than a directly observed emissions series.
+
+`data.xlsx` is the canonical analysis panel rather than a collection of unprocessed source workbooks. Full source citations, coefficient references, measurement boundaries, and unit-conversion rules are documented in the associated article and Online Resources.
+
+## Super-SBM reference labels
+
+The baseline `efficiency` labels were calculated in MATLAB using the following settings:
+
+- panel data;
+- original, non-oriented model;
+- undesirable output included;
+- super-efficiency enabled;
+- variable returns to scale (VRS);
+- pooled global frontier;
+- equal weights across eight inputs, one desirable output, and one undesirable output.
+
+The eight input weights are `0.125` each. The desirable-output and undesirable-output weights are `0.5` each. The Python frontier implementation is an independent reconstruction and sensitivity tool; it does not overwrite the MATLAB reference labels.
+
+## Environment
+
+Create an isolated Python environment and install the declared dependencies:
+
+```bash
+python -m venv .venv
 ```
 
-The intended authoritative `efficiency` column consists of 720 precomputed Super-SBM labels calculated in MATLAB from the 30-province, 2000-2023 panel. The required MATLAB settings are: panel data; original model; non-oriented; undesirable output included; super-efficiency enabled; variable returns to scale (VRS); pooled global frontier; and equal weights. The model uses eight inputs (`Qx = 0.125` for each input), one desirable output (`Qy = 0.5`), and one undesirable output (`Qb = 0.5`). The independent Python solver is a validation and alternative-frontier tool; it does not overwrite the MATLAB labels.
+Windows PowerShell:
 
-### Irrigation-data correction record
-
-The stable code entry point remains `data.xlsx`; no script path needs to change. On 2026-07-16, the official National Bureau of Statistics workbook was checked against the panel and the following limited corrections were made:
-
-- `EIA`, 2005 and 2006: the two annual blocks had been transposed. The 60 province-year values were restored to their official same-year values.
-- `CEA`, 2005 and 2006: no change was required because the stored carbon totals already used the correct same-year irrigation activity.
-- `CEA`, 2021: 30 values were recalculated with the 2021 `EIA` activity instead of the 2020 activity. All other activity data and coefficients were held fixed.
-- `efficiency`: no value was changed during the initial EIA/CEA correction. The user subsequently reran MATLAB under the documented pooled global-frontier settings, and the 720 exported `EG_V(t)` values were matched by `ID-Year` and written to `efficiency` on 2026-07-16.
-
-Local traceability archives (retained in the revision workspace and excluded from the public Git repository):
-
-- `data_before_eia_correction_20260716.xlsx`: exact pre-correction input archive; SHA-256 `DFBB39ED8204DCF22FFB0FBF2183C85485771C9BDCA18D2583AFCAA985B4B687`.
-- `effective_irrigated_area_NBS_2000_2024.xlsx`: archived official source workbook; SHA-256 `7853A25BA83F2916721138E06DF7E32E177B11F11B095EA58789A0A37CE60F16`.
-- `data_before_efficiency_refresh_20260716.xlsx`: corrected EIA/CEA input immediately before the MATLAB-label refresh; SHA-256 `236C495A86BFA2A274B2669FBC28C60EF47D5F414BE6329C1B730AC0FD54E40C`.
-
-Public-release traceability files:
-
-- `Global_Un_Super_SBM_VRS_Efficiency_Gt.csv`: MATLAB efficiency export; SHA-256 `587DEE4789C3706CC61AAB31E8ECD3F1E62A0A72E2EF254DD0776954C09032A5`.
-- `Global_Un_Super_SBM_VRS_Info.txt`: MATLAB parameter record; SHA-256 `63A206A97554BA58DBC430E6C5E99F6FE667FB000A20843B05DA08C96C75DFE3`.
-- `data.xlsx`: corrected canonical input with refreshed MATLAB labels; SHA-256 `8E85425D6624629237E8223DE29F4E9ECE47086B8FAEB97F155C046B222D489D`.
-
-The refresh passed the following checks: 720 unique `ID-Year` keys with complete 30-province, 2000-2023 coverage; no missing or non-positive scores; no changes outside the `efficiency` column; and no workbook formula-error values. Compared with the preceding labels, 103 cells changed above `1e-12`, Pearson correlation was 0.99946, Spearman correlation was 0.99998, and the count of scores at or above one changed from 53 to 52. These are diagnostic comparisons only; all manuscript-facing results must still be regenerated.
-
-The revised results script also requires the scenario export generated by the main notebook:
-
-```python
-./tables/Scenario_analysis_full_2023.xlsx
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Please keep these files in the expected working directory, or revise the paths in the code if needed.
+Linux or macOS:
 
-## Outputs
+```bash
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-The workflow writes figures and tables to:
+## Reproduction workflow
 
-- `fig/`
-- `tables/`
-- `results_story/`
+Run commands from the repository root.
 
-These directories mainly store generated outputs and are excluded from version control by `.gitignore`.
+1. Confirm that `data.xlsx`, the MATLAB score export, and the MATLAB settings record are present.
+2. Open `eco_efficiency_model_pipeline.ipynb` and run the notebook from beginning to end. This produces the model-comparison, validation, ablation, and scenario workbooks used by the downstream scripts.
+3. Run the standalone predictor-ablation analysis:
 
-The formal revision package stores selected supplementary Excel outputs separately as Online Resource workbooks. The repository is kept focused on the code, input data, and scripts needed to reproduce those outputs.
+   ```bash
+   python predictor_ablation_analysis.py
+   ```
 
-## Recommended tracked files
+4. Generate descriptive tables, figures, rank-persistence measures, and province profiles:
 
-The repository should normally track only the core research assets:
+   ```bash
+   python eco_efficiency_results.py
+   ```
 
-- `data.xlsx`
-- `Global_Un_Super_SBM_VRS_Efficiency_Gt.csv`
-- `Global_Un_Super_SBM_VRS_Info.txt`
-- `eco_efficiency_model_pipeline.ipynb`
-- `eco_efficiency_results.py`
-- `revision_minimal_robustness.py`
-- `postprocess_revision_outputs.py`
-- `README.md`
-- `requirements.txt`
-- `.gitignore`
+5. Validate the Python pooled-frontier reconstruction and compute the centered five-year local-window sensitivity results:
 
-## Suggested run order
+   ```bash
+   python super_sbm_rolling_frontier.py
+   ```
 
-1. Completed: recalculate all 720 `efficiency` labels in MATLAB and match the exported scores to `data.xlsx` by `ID-Year`.
-2. Completed: run `eco_efficiency_model_pipeline.ipynb` from beginning to end and refresh the main modelling, scenario, ablation, and panel-validation outputs.
-3. Completed: run `revision_minimal_robustness.py` and refresh `tables/Surrogate_predictor_ablation_revision.xlsx`.
-4. Completed as part of the main notebook: run the panel-aware validation code and apply `postprocess_revision_outputs.py` to produce the canonical aggregation.
-5. Completed: run `eco_efficiency_results.py` for the revised descriptive outputs and Section 4.3 interpretation tables and figures.
-6. Completed: run `super_sbm_rolling_frontier.py` to refresh the alternative-frontier
-   robustness output. The script stops before computing
-   the rolling frontier unless its pooled-frontier reconstruction passes the
-   documented numerical validation gate.
-7. Completed: cross-check all refreshed outputs and synchronize the clean manuscript, marked manuscript, Online Resources, figures, and response letter as one controlled update.
+`eco_efficiency_results.py` requires `tables/Scenario_analysis_full_2023.xlsx`, which is produced by the main notebook. The frontier script stops before the local-window calculation if its pooled-frontier reconstruction does not pass the built-in validation gate.
 
-### Latest main-notebook run
+Some generated workbooks retain filenames ending in `_revision`. These stable filenames are preserved solely to maintain exact links with the archived Online Resources; they do not represent a separate model specification or development branch.
 
-The corrected-data run completed successfully on 2026-07-16 (approximately 71 minutes). Key diagnostics were: repeated-CV XGBoost `R2 = 0.905`; random held-out XGBoost `R2 = 0.946`; 11-split rolling time-forward TSLR-MLP mean `R2 = 0.719`; and province-block XGBoost `R2 = 0.679`. Mean 2023 diagnostic changes were 0.0613 for P1, 0.0636 for P2, and 0.0990 for P3. These values have been cross-checked against the formal manuscript and Online Resources.
+## Validation design
 
-The predictor-ablation refresh completed on 2026-07-17. Random five-fold mean `R2` values were 0.899 for the full set, 0.895 without aggregate CEA, and 0.689 without CEA and its six activity components. Corresponding 11-split time-forward values were 0.127, 0.116, and 0.010. The evidence still supports the same bounded interpretation: aggregate CEA alone adds limited incremental approximation, while the broader production/accounting information set matters; these are predictive diagnostics, not causal mechanisms.
+The repository distinguishes among:
 
-The descriptive-results refresh also completed on 2026-07-17. The revised 2023 mean diagnostic changes are 0.0613 for P1, 0.0636 for P2, and 0.0990 for P3; the corresponding medians are 0.0586, 0.0566, and 0.0936. All three scenarios cover 30 provinces with no missing or duplicate province-scenario rows. The mean 5-year and 10-year rank-persistence correlations are 0.9092 and 0.8290. All `results_story` tables and figures were regenerated, including the heatmap with English province names, and synchronized to the formal revision package.
+- repeated cross-validation and random held-out evaluation;
+- rolling time-forward evaluation;
+- province-block evaluation;
+- predictor-group ablation;
+- pooled versus five-year local-window frontier sensitivity;
+- perturbation validation and emission-factor sensitivity implemented in the main workflow.
 
-The five-year alternative-frontier refresh completed on 2026-07-17. The pooled-frontier reconstruction matched the 52 MATLAB frontier observations and passed the numerical gate (`N = 720`, maximum absolute error `2.84e-5`, Spearman `1.000000`). The centered five-year window was feasible for all 720 observations. Overall pooled-versus-window Spearman was `0.567537`; mean and median within-year Spearman were `0.891157` and `0.881869`; mean and median absolute score differences were `0.294103` and `0.264279`; and the median within-year absolute rank difference was `2`. Both `tables/rolling_5yr_frontier_robustness_revision.csv` and `tables/Alternative_frontier_robustness_revision.xlsx` were refreshed. The bounded interpretation is unchanged: absolute score levels are frontier-sensitive, whereas within-year ordering is more stable.
+Results from these designs are not directly interchangeable because they use different samples, split rules, model sets, and aggregation procedures. In particular, strong random-split performance should not be interpreted as equivalent to future-period or unseen-province transfer performance.
 
-## Reproducibility
+## Reproducibility notes
 
-Random seeds and model settings are fixed in the code where applicable. The corrected input now contains refreshed MATLAB labels and is ready for the machine-learning and reporting stages. The MATLAB `efficiency` column remains the baseline result. The Python Super-SBM implementation is retained as an independently checked alternative-frontier tool and must pass the pooled-label validation gate against these refreshed labels before its five-year local-window output is used. Direct DEA perturbation, CEA-exclusion, and emission-factor-sensitivity results are not generated by this script.
+- Random seeds and model settings are fixed in the code where applicable.
+- `ID` and `Year` form the province-year key used to align the MATLAB scores with the Python panel.
+- The main notebook imports `fix_panel_reaggregation` from `panel_validation_postprocess.py` to harmonize model names and aggregate panel-validation outputs.
+- The XGBoost surrogate uses the documented monotonic directions for the ten predictors.
+- The baseline MATLAB scores remain authoritative; the Python Super-SBM implementation is used for reconstruction checks and alternative-frontier sensitivity.
+- Local paths, author-specific directories, and manuscript-management files are not required by the workflow.
 
-Windows runtime note: in the current local environment, TensorFlow failed to load when the long project path and MATLAB/Anaconda DLL paths were active. The successful run used an isolated short-path staging directory with the same `data.xlsx`, a clean process-local `PATH`, UTF-8 console output, and XGBoost imported before TensorFlow. The formal notebook code and input workbook were not modified by this compatibility workaround.
+## Interpretation boundary
+
+The directional scenarios are standardized diagnostics. A positive model response indicates consistency with the imposed input-output direction under the fitted surrogate; it does not establish implementation feasibility, behavioral response, welfare effects, or causal policy impact. Feature ablation and model-response analysis describe predictive dependence on the available information set rather than independent real-world mechanisms.
+
+## Citation
+
+Please cite the associated article when bibliographic details become available. The final citation will be added after publication.

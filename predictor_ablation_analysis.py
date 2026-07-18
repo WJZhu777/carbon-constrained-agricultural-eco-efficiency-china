@@ -1,3 +1,10 @@
+"""Evaluate surrogate-label dependence under reduced predictor sets.
+
+The script compares the full predictor set with specifications that exclude
+aggregate CEA and its accounting components under random and rolling
+time-forward evaluation. The analysis is predictive, not causal.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -211,7 +218,7 @@ def run_surrogate_predictor_ablation(df: pd.DataFrame) -> Path:
     readme = pd.DataFrame(
         {
             "Notes": [
-                "Reviewer-driven surrogate ablation for circularity concerns.",
+                "Predictor-group ablation for label-dependence diagnostics.",
                 "Model is monotone-constrained XGBoost using the same predictor signs as the main pipeline.",
                 "without_CEA removes only the aggregate carbon-emission variable.",
                 "without_CEA_and_CEA_components removes CEA plus AFA, PU, ADY, PFU, EIA, and CS.",
@@ -234,9 +241,9 @@ def run_surrogate_predictor_ablation(df: pd.DataFrame) -> Path:
 def main() -> None:
     TABLES_DIR.mkdir(exist_ok=True)
     df = load_modeling_data()
-    print(f"[revision robustness] loaded {len(df)} rows from {DATA_PATH}")
+    print(f"[predictor ablation] loaded {len(df)} rows from {DATA_PATH}")
     path = run_surrogate_predictor_ablation(df)
-    print(f"[revision robustness] saved {path}")
+    print(f"[predictor ablation] saved {path}")
 
 
 if __name__ == "__main__":

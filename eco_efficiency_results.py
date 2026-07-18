@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Generate descriptive figures, summary tables, and directional-perturbation assets
-for the revised ESI manuscript.
+for the associated agricultural eco-efficiency study.
 
-This version extends Section 4.3 with a province-level interpretation layer so that
-results can move beyond ranking and toward management-oriented explanation.
+The province-level interpretation layer supplements aggregate rankings with
+representative response profiles and management-oriented comparisons.
 
-Key additions for Section 4.3:
+Key outputs for the province-level analysis:
 - Province story profile table
-- Representative case selection table aligned with the revised manuscript
+- Representative case selection table used in the associated article
   (Jilin + Gansu + Ningxia by default)
 - Representative case response-profile figure
 
@@ -113,11 +113,11 @@ HEATMAP_CMAP = "cividis"
 USE_ROBUST_HEATMAP = False
 ROBUST_Q = (0.02, 0.98)
 
-# Representative-case mode for Section 4.3 discussion.
-# "fixed_manuscript_cases" uses the revised manuscript trio:
+# Representative-case mode for the province-profile analysis.
+# "fixed_study_cases" uses the three cases discussed in the associated article:
 # Jilin + Gansu + Ningxia.
 # "auto" falls back to data-driven selection.
-REPRESENTATIVE_CASE_MODE = "fixed_manuscript_cases"
+REPRESENTATIVE_CASE_MODE = "fixed_study_cases"
 FORCED_REPRESENTATIVE_CASES = {
     "Priority follow-up case": "Jilin",
     "Direction-sensitive case": "Gansu",
@@ -614,7 +614,7 @@ def _select_representative_cases(profile: pd.DataFrame) -> pd.DataFrame:
 
     case_order = ["Priority follow-up case", "Direction-sensitive case", "Low-return case"]
 
-    if REPRESENTATIVE_CASE_MODE == "fixed_manuscript_cases":
+    if REPRESENTATIVE_CASE_MODE == "fixed_study_cases":
         frames = []
         missing = []
         for case_type in case_order:

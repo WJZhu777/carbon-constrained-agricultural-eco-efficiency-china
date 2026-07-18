@@ -1,3 +1,5 @@
+"""Canonicalize and aggregate panel-aware model-validation outputs."""
+
 from __future__ import annotations
 
 import re
