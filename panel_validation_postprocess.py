@@ -39,7 +39,7 @@ def _std_or_zero(values: pd.Series) -> float:
 
 
 def fix_panel_reaggregation(tables_dir: Path = TABLES_DIR) -> Path:
-    """Canonicalize all panel robustness detail sheets and reaggregate them together."""
+    """Aggregate panel-validation detail sheets using canonical model names."""
     src = tables_dir / "Panel_dependence_robustness_checks.xlsx"
     out_path = tables_dir / "Panel_dependence_robustness_checks_reaggregated.xlsx"
     sheets = pd.read_excel(src, sheet_name=None)
@@ -146,7 +146,7 @@ def fix_panel_reaggregation(tables_dir: Path = TABLES_DIR) -> Path:
             "Notes": [
                 "source_all_detail combines random_stratified_long, time_forward_rolling_long, and province_block_long.",
                 "Model_canon maps Ensemble(XGB...+TSLR-MLP...) to VWLB and Stacking[...] to OOF-Stacking.",
-                "agg_canonical_mean_std is the preferred panel robustness summary for manuscript-level reporting.",
+                "Use agg_canonical_mean_std as the canonical panel-validation summary.",
                 "best_by_split reports the highest-R2 model within each split.",
             ]
         }

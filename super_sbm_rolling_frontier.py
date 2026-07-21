@@ -1,6 +1,6 @@
 """Validate and apply the undesirable-output Super-SBM under VRS.
 
-The implementation follows the MATLAB settings used for the manuscript:
+The implementation follows the documented MATLAB pooled-frontier settings:
 non-oriented, undesirable-output Super-SBM, variable returns to scale,
 and equal weights across eight inputs and the two output components.
 

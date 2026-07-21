@@ -219,7 +219,7 @@ def run_surrogate_predictor_ablation(df: pd.DataFrame) -> Path:
         {
             "Notes": [
                 "Predictor-group ablation for label-dependence diagnostics.",
-                "Model is monotone-constrained XGBoost using the same predictor signs as the main pipeline.",
+                "Monotone-constrained XGBoost with the predictor signs used in the main pipeline.",
                 "without_CEA removes only the aggregate carbon-emission variable.",
                 "without_CEA_and_CEA_components removes CEA plus AFA, PU, ADY, PFU, EIA, and CS.",
                 "The analysis is diagnostic: it evaluates label approximation under reduced predictor sets, not causal mechanisms.",

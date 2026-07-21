@@ -12,14 +12,13 @@ Key outputs for the province-level analysis:
   (Jilin + Gansu + Ningxia by default)
 - Representative case response-profile figure
 
-CRITICAL LOGIC FOR SECTION 4.3
-------------------------------
-This script does NOT retrain a new surrogate for Figure 4 / Table 5.
-Instead, it reads the full-coverage 2023 scenario output exported from the
-main manuscript pipeline, so that Section 4.3 uses the SAME final surrogate
-(e.g., VWLB) as Section 3.2.
+Scenario-source consistency
+---------------------------
+This script does not retrain the surrogate used for the profile figures and
+tables. It reads the full-coverage 2023 scenario output from the main pipeline,
+so all downstream profiles use the same fitted surrogate (e.g., VWLB).
 
-Required upstream input for Section 4.3:
+Required upstream input:
     ./tables/Scenario_analysis_full_2023.xlsx
 
 Expected columns in that file (sheet = scenario_outputs):
@@ -28,7 +27,7 @@ Expected columns in that file (sheet = scenario_outputs):
     yhat_S2_allsource10, delta_S2_allsource10,
     yhat_S3_upgrade_mix, delta_S3_upgrade_mix
 
-What this script produces for Section 4.3:
+Outputs:
     results_story/figures/Fig_4_3_perturbation_distribution_<year>.tif
     results_story/figures/Fig_4_3_quadrant_typology_P1_10pct_<year>.tif
     results_story/figures/Fig_4_3_representative_case_profiles_<year>.tif
@@ -374,10 +373,10 @@ def make_indicator_assets(df: pd.DataFrame, dirs: Dict[str, str]) -> None:
 def _read_scenario_input(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(
-            "Section 4.3 scenario input is missing:\n"
+            "Scenario input is missing:\n"
             f"  {path}\n\n"
-            "Generate this file from the main manuscript pipeline using the SAME final surrogate "
-            "(e.g., VWLB) used in Section 3.2, with ALL 2023 provinces included."
+            "Generate this file with the fitted surrogate used by the main pipeline "
+            "and include every 2023 province."
         )
     df = pd.read_excel(path, sheet_name="scenario_outputs")
     expected = [
@@ -596,7 +595,7 @@ def _selection_reason_direction(row: pd.Series) -> str:
 
 def _selection_reason_forced(row: pd.Series, case_type: str) -> str:
     return (
-        f"Fixed manuscript case for discussion ({case_type}); quadrant_P1={row['quadrant_P1']}; "
+        f"Pre-specified study case ({case_type}); quadrant_P1={row['quadrant_P1']}; "
         f"dominant={row['dominant_scenario']}; mean_delta_3scn={row['mean_delta_3scn']:.6f}; "
         f"response_spread={row['response_spread']:.6f}."
     )
@@ -718,7 +717,7 @@ def make_perturbation_assets_from_pipeline(df: pd.DataFrame, dirs: Dict[str, str
     n_prov = long_df["Province"].nunique()
     if n_prov < 20:
         raise ValueError(
-            f"Scenario file appears to cover only {n_prov} provinces, which is too small for Figure 4 / Table 5. "
+            f"Scenario file appears to cover only {n_prov} provinces, which is too small for full-coverage profile analysis. "
             "Use the full-coverage 2023 scenario export from the main pipeline, not the 4-province demo or the 12-province recomputation subset."
         )
 
@@ -801,16 +800,16 @@ def write_readme(dirs: Dict[str, str]) -> None:
     txt = f"""\
 Output directory: {dirs['out']}
 
-Section 4.1:
+Trend and heatmap outputs:
   - figures/Fig_4_1_trend_mean_median_IQR.tif
   - figures/Fig_4_1_heatmap_province_year.tif
   - tables/Table_4_1_descriptive_stats.xlsx
 
-Section 4.2:
+Inequality and rank-persistence outputs:
   - tables/Table_4_2_inequality_by_year.xlsx
   - tables/Table_4_2_rank_persistence.xlsx
 
-Section 4.3:
+Directional-screening outputs:
   Input required:
     - {SCENARIO_INPUT_PATH}
 
@@ -829,9 +828,9 @@ Section 4.3:
     - tables/Table_4_3_representative_cases_<year>.xlsx
 
 Notes:
-- Section 4.3 does not retrain a new surrogate locally.
-- Figure 4 / Table 5 are constructed from the same full-coverage scenario file exported from the main manuscript pipeline.
-- The added story-profile layer is for management-oriented interpretation only and does not change the underlying surrogate outputs.
+- The profile analysis reads the fitted-surrogate scenario outputs; it does not retrain the model.
+- The profile figures and tables use the full-coverage scenario file from the main pipeline.
+- The province-profile summaries do not alter the surrogate outputs.
 """
     with open(os.path.join(dirs["out"], "README_results_story.txt"), "w", encoding="utf-8") as f:
         f.write(txt)
