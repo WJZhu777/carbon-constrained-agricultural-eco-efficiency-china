@@ -8,7 +8,7 @@ The analysis covers 30 mainland Chinese provinces from 2000 to 2023. It combines
 
 The repository supports four connected tasks:
 
-1. use MATLAB-generated global-frontier Super-SBM scores as the reference efficiency labels;
+1. use pooled global-frontier Super-SBM scores as the reference efficiency labels;
 2. compare machine-learning models for approximating those labels;
 3. evaluate model behavior under random, rolling time-forward, province-block, and predictor-ablation designs;
 4. examine standardized input-output perturbations and alternative-frontier sensitivity.
@@ -19,9 +19,7 @@ The machine-learning layer is a surrogate for DEA-generated labels. Its outputs 
 
 | Path | Purpose |
 |---|---|
-| `data.xlsx` | Canonical 30-province, 2000-2023 analysis panel, including the MATLAB Super-SBM label in `efficiency`. |
-| `Global_Un_Super_SBM_VRS_Efficiency_Gt.csv` | MATLAB export of the 720 global-frontier Super-SBM scores, keyed by province ID and year. |
-| `Global_Un_Super_SBM_VRS_Info.txt` | Computational settings for the MATLAB Super-SBM run. |
+| `data.xlsx` | Canonical 30-province, 2000-2023 analysis panel, including the pooled global-frontier Super-SBM score in `efficiency`. |
 | `eco_efficiency_model_pipeline.ipynb` | Main workflow for model comparison, validation, surrogate construction, and directional-screening outputs. |
 | `predictor_ablation_analysis.py` | Predictor-group ablation under random and rolling time-forward evaluation. |
 | `panel_validation_postprocess.py` | Canonical aggregation of panel-aware validation outputs. It is called by the main notebook. |
@@ -74,9 +72,9 @@ The carbon-emission indicator is constructed from fertilizer, pesticide, plastic
 
 `data.xlsx` is the canonical analysis panel rather than a collection of unprocessed source workbooks. Full source citations, coefficient references, measurement boundaries, and unit-conversion rules are documented in the associated article and Online Resources.
 
-## Super-SBM reference labels
+## Super-SBM score construction and verification
 
-The baseline `efficiency` labels were calculated in MATLAB using the following settings:
+The baseline `efficiency` scores in `data.xlsx` use the following specification:
 
 - panel data;
 - original, non-oriented model;
@@ -86,7 +84,7 @@ The baseline `efficiency` labels were calculated in MATLAB using the following s
 - pooled global frontier;
 - equal weights across eight inputs, one desirable output, and one undesirable output.
 
-The eight input weights are `0.125` each. The desirable-output and undesirable-output weights are `0.5` each. The Python frontier implementation is an independent reconstruction and sensitivity tool; it does not overwrite the MATLAB reference labels.
+The eight input weights are `0.125` each. The desirable-output and undesirable-output weights are `0.5` each. The Python frontier implementation reconstructs the pooled scores from the panel variables in `data.xlsx`, compares them with the `efficiency` reference column, and applies the same specification to the alternative-frontier sensitivity analysis. It does not overwrite the reference scores in `data.xlsx`.
 
 ## Environment
 
@@ -116,7 +114,7 @@ python -m pip install -r requirements.txt
 
 Run commands from the repository root.
 
-1. Confirm that `data.xlsx`, the MATLAB score export, and the MATLAB settings record are present.
+1. Confirm that `data.xlsx` is present.
 2. Open `eco_efficiency_model_pipeline.ipynb` and run the notebook from beginning to end. This produces the model-comparison, validation, ablation, and scenario workbooks used by the downstream scripts.
 3. Run the standalone predictor-ablation analysis:
 
@@ -156,10 +154,10 @@ Results from these designs are not directly interchangeable because they use dif
 ## Reproducibility notes
 
 - Random seeds and model settings are fixed in the code where applicable.
-- `ID` and `Year` form the province-year key used to align the MATLAB scores with the Python panel.
+- `ID` and `Year` form the province-year key used throughout the panel and output files.
 - The main notebook imports `fix_panel_reaggregation` from `panel_validation_postprocess.py` to harmonize model names and aggregate panel-validation outputs.
 - The XGBoost surrogate uses the documented monotonic directions for the ten predictors.
-- The baseline MATLAB scores remain authoritative; the Python Super-SBM implementation is used for reconstruction checks and alternative-frontier sensitivity.
+- The `efficiency` column in `data.xlsx` contains the reference scores; the Python Super-SBM implementation is used for reconstruction checks and alternative-frontier sensitivity.
 - Local paths, author-specific directories, and manuscript-management files are not required by the workflow.
 
 ## Interpretation boundary

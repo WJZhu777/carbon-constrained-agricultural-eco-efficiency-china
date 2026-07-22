@@ -1,11 +1,11 @@
 """Validate and apply the undesirable-output Super-SBM under VRS.
 
-The implementation follows the documented MATLAB pooled-frontier settings:
+The implementation follows the documented pooled-frontier settings:
 non-oriented, undesirable-output Super-SBM, variable returns to scale,
 and equal weights across eight inputs and the two output components.
 
 The script first reconstructs the pooled global-frontier scores and compares
-all 720 values with the MATLAB ``efficiency`` column. It computes the five-year
+all 720 values with the reference ``efficiency`` column. It computes the five-year
 local-window frontier only when that validation gate passes.
 """
 
@@ -40,8 +40,8 @@ class DEAError(RuntimeError):
 @dataclass(frozen=True)
 class ValidationResult:
     n: int
-    n_frontier_matlab: int
-    n_frontier_python: int
+    n_frontier_reference: int
+    n_frontier_reconstructed: int
     max_abs_error: float
     mean_abs_error: float
     pearson: float
@@ -266,17 +266,17 @@ def _validate_data(df: pd.DataFrame) -> None:
 def validate_pooled_frontier(df: pd.DataFrame) -> tuple[np.ndarray, ValidationResult]:
     reference = df.reset_index(drop=True)
     reconstructed = np.asarray([_score_target(reference, i) for i in range(len(reference))])
-    matlab = reference[LABEL_COL].to_numpy(dtype=float)
-    errors = np.abs(reconstructed - matlab)
+    reference_scores = reference[LABEL_COL].to_numpy(dtype=float)
+    errors = np.abs(reconstructed - reference_scores)
 
     result = ValidationResult(
         n=len(reference),
-        n_frontier_matlab=int(np.sum(matlab >= 1.0)),
-        n_frontier_python=int(np.sum(reconstructed >= 1.0)),
+        n_frontier_reference=int(np.sum(reference_scores >= 1.0)),
+        n_frontier_reconstructed=int(np.sum(reconstructed >= 1.0)),
         max_abs_error=float(errors.max()),
         mean_abs_error=float(errors.mean()),
-        pearson=float(pearsonr(reconstructed, matlab).statistic),
-        spearman=float(spearmanr(reconstructed, matlab).statistic),
+        pearson=float(pearsonr(reconstructed, reference_scores).statistic),
+        spearman=float(spearmanr(reconstructed, reference_scores).statistic),
         n_within_1e_6=int(np.sum(errors <= 1e-6)),
     )
     return reconstructed, result
@@ -285,7 +285,7 @@ def validate_pooled_frontier(df: pd.DataFrame) -> tuple[np.ndarray, ValidationRe
 def _validation_passes(result: ValidationResult) -> bool:
     return (
         result.n == 720
-        and result.n_frontier_matlab == result.n_frontier_python
+        and result.n_frontier_reference == result.n_frontier_reconstructed
         and result.max_abs_error <= 5e-5
         and result.spearman >= 0.999999
     )
@@ -319,8 +319,8 @@ def compute_centered_five_year_frontier(
             {
                 ID_COL: int(target[ID_COL]),
                 YEAR_COL: year,
-                "pooled_matlab_score": float(target[LABEL_COL]),
-                "pooled_python_score": float(reconstructed_pooled[row_position]),
+                "pooled_reference_score": float(target[LABEL_COL]),
+                "pooled_reconstructed_score": float(reconstructed_pooled[row_position]),
                 "pooled_validation_abs_error": float(
                     abs(reconstructed_pooled[row_position] - float(target[LABEL_COL]))
                 ),
@@ -334,7 +334,7 @@ def compute_centered_five_year_frontier(
         )
 
     detail = pd.DataFrame(rows)
-    detail["pooled_rank_within_year"] = detail.groupby(YEAR_COL)["pooled_matlab_score"].rank(
+    detail["pooled_rank_within_year"] = detail.groupby(YEAR_COL)["pooled_reference_score"].rank(
         ascending=False, method="average"
     )
     detail["rolling_rank_within_year"] = detail.groupby(YEAR_COL)["rolling_5yr_score"].rank(
@@ -350,8 +350,8 @@ def _print_validation(result: ValidationResult) -> None:
     print("Pooled global-frontier validation")
     print(f"  N: {result.n}")
     print(
-        "  Frontier observations (MATLAB / Python): "
-        f"{result.n_frontier_matlab} / {result.n_frontier_python}"
+        "  Frontier observations (reference / reconstructed): "
+        f"{result.n_frontier_reference} / {result.n_frontier_reconstructed}"
     )
     print(f"  Mean absolute error: {result.mean_abs_error:.12g}")
     print(f"  Maximum absolute error: {result.max_abs_error:.12g}")
@@ -361,10 +361,10 @@ def _print_validation(result: ValidationResult) -> None:
 
 
 def _print_rolling_summary(detail: pd.DataFrame) -> None:
-    pooled = detail["pooled_matlab_score"]
+    pooled = detail["pooled_reference_score"]
     rolling = detail["rolling_5yr_score"]
     year_spearman = detail.groupby(YEAR_COL).apply(
-        lambda group: spearmanr(group["pooled_matlab_score"], group["rolling_5yr_score"]).statistic,
+        lambda group: spearmanr(group["pooled_reference_score"], group["rolling_5yr_score"]).statistic,
         include_groups=False,
     )
     print("Five-year local-window frontier summary")
@@ -395,7 +395,7 @@ def main() -> None:
     _print_validation(validation)
     if not _validation_passes(validation):
         raise RuntimeError(
-            "The Python solver did not reproduce the MATLAB pooled-frontier labels closely enough; "
+            "The Python solver did not reproduce the pooled-frontier reference scores closely enough; "
             "the five-year frontier was not computed."
         )
 
