@@ -24,10 +24,10 @@ The machine-learning layer is a surrogate for DEA-generated labels. Its outputs 
 | `predictor_ablation_analysis.py` | Predictor-group ablation under random and rolling time-forward evaluation. |
 | `panel_validation_postprocess.py` | Canonical aggregation of panel-aware validation outputs. It is called by the main notebook. |
 | `eco_efficiency_results.py` | Descriptive indicators, figures, inequality and rank-persistence summaries, and province-level screening profiles. |
-| `super_sbm_rolling_frontier.py` | Independent Python reconstruction check and centered five-year local-window frontier analysis. |
+| `super_sbm_rolling_frontier.py` | Independent Python reconstruction check and centered five-year local-window frontier analysis, including CSV and Excel summary exports. |
 | `requirements.txt` | Python dependencies. |
 
-Generated figures and workbooks are written to `fig/`, `tables/`, and `results_story/`. These directories are excluded from version control because they can be regenerated from the tracked inputs and code.
+Generated figures and workbooks are written to `fig/`, `tables/`, and `results_story/`. These directories are excluded from version control because they can be regenerated from the tracked inputs and code. Frozen copies of the detailed workbooks used in the article are supplied separately as Online Resource 2; they are not mirrored in the GitHub repository.
 
 The principal generated workbooks include:
 
@@ -122,6 +122,8 @@ Run commands from the repository root.
    python predictor_ablation_analysis.py
    ```
 
+   This standalone diagnostic uses `StandardScaler` fitted within each training fold and a monotone XGBoost specification with `n_estimators=500`, `max_depth=3`, and `learning_rate=0.03`. These settings are intentionally reported separately from the main-pipeline XGBoost specification.
+
 4. Generate descriptive tables, figures, rank-persistence measures, and province profiles:
 
    ```bash
@@ -133,6 +135,8 @@ Run commands from the repository root.
    ```bash
    python super_sbm_rolling_frontier.py
    ```
+
+   This command writes both `tables/rolling_5yr_frontier_robustness_revision.csv` and `tables/Alternative_frontier_robustness_revision.xlsx`.
 
 `eco_efficiency_results.py` requires `tables/Scenario_analysis_full_2023.xlsx`, which is produced by the main notebook. The frontier script stops before the local-window calculation if its pooled-frontier reconstruction does not pass the built-in validation gate.
 

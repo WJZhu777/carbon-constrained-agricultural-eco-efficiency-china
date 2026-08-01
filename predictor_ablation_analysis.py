@@ -220,6 +220,8 @@ def run_surrogate_predictor_ablation(df: pd.DataFrame) -> Path:
             "Notes": [
                 "Predictor-group ablation for label-dependence diagnostics.",
                 "Monotone-constrained XGBoost with the predictor signs used in the main pipeline.",
+                "Standalone ablation settings: n_estimators=500, max_depth=3, learning_rate=0.03, subsample=0.90, colsample_bytree=0.90, reg_lambda=1.0.",
+                "StandardScaler is fitted separately within each training fold; random_state is set separately for each split.",
                 "without_CEA removes only the aggregate carbon-emission variable.",
                 "without_CEA_and_CEA_components removes CEA plus AFA, PU, ADY, PFU, EIA, and CS.",
                 "The analysis is diagnostic: it evaluates label approximation under reduced predictor sets, not causal mechanisms.",

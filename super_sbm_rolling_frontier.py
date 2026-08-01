@@ -24,6 +24,7 @@ from scipy.stats import pearsonr, spearmanr
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DATA = ROOT / "data.xlsx"
 DEFAULT_OUTPUT = ROOT / "tables" / "rolling_5yr_frontier_robustness_revision.csv"
+DEFAULT_WORKBOOK = ROOT / "tables" / "Alternative_frontier_robustness_revision.xlsx"
 
 ID_COL = "ID"
 YEAR_COL = "Year"
@@ -363,9 +364,8 @@ def _print_validation(result: ValidationResult) -> None:
 def _print_rolling_summary(detail: pd.DataFrame) -> None:
     pooled = detail["pooled_reference_score"]
     rolling = detail["rolling_5yr_score"]
-    year_spearman = detail.groupby(YEAR_COL).apply(
+    year_spearman = detail.groupby(YEAR_COL)[["pooled_reference_score", "rolling_5yr_score"]].apply(
         lambda group: spearmanr(group["pooled_reference_score"], group["rolling_5yr_score"]).statistic,
-        include_groups=False,
     )
     print("Five-year local-window frontier summary")
     print(f"  Effective N: {rolling.notna().sum()}/{len(detail)}")
@@ -379,10 +379,183 @@ def _print_rolling_summary(detail: pd.DataFrame) -> None:
     print(f"  Median within-year absolute rank difference: {detail['absolute_rank_difference'].median():.3f}")
 
 
+def _gini(values: pd.Series) -> float:
+    x = np.sort(pd.to_numeric(values, errors="coerce").dropna().to_numpy(dtype=float))
+    if x.size == 0 or np.any(x < 0):
+        return float("nan")
+    if np.allclose(x, 0.0):
+        return 0.0
+    cumulative = np.cumsum(x)
+    return float((x.size + 1 - 2 * cumulative.sum() / cumulative[-1]) / x.size)
+
+
+def _theil_t(values: pd.Series) -> float:
+    x = pd.to_numeric(values, errors="coerce").dropna().to_numpy(dtype=float)
+    if x.size == 0 or np.any(x <= 0):
+        return float("nan")
+    ratio = x / x.mean()
+    return float(np.mean(ratio * np.log(ratio)))
+
+
+def _build_year_summary(detail: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for year, group in detail.groupby(YEAR_COL, sort=True):
+        pooled = group["pooled_reference_score"]
+        rolling = group["rolling_5yr_score"]
+        rows.append(
+            {
+                "Year": int(year),
+                "N": int(len(group)),
+                "Reference start": int(group["rolling_reference_start"].iloc[0]),
+                "Reference end": int(group["rolling_reference_end"].iloc[0]),
+                "Reference years": int(group["rolling_reference_years"].iloc[0]),
+                "Reference N": int(group["rolling_reference_n"].iloc[0]),
+                "Pooled mean": float(pooled.mean()),
+                "Window mean": float(rolling.mean()),
+                "Window median": float(rolling.median()),
+                "Window Gini": _gini(rolling),
+                "Window Theil-T": _theil_t(rolling),
+                "Window N (score >= 1)": int((rolling >= 1.0).sum()),
+                "Mean absolute difference": float((rolling - pooled).abs().mean()),
+                "Pearson": float(pearsonr(pooled, rolling).statistic),
+                "Spearman": float(spearmanr(pooled, rolling).statistic),
+                "Median absolute rank difference": float(group["absolute_rank_difference"].median()),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _build_workbook_summary(detail: pd.DataFrame, validation: ValidationResult) -> pd.DataFrame:
+    pooled = detail["pooled_reference_score"]
+    rolling = detail["rolling_5yr_score"]
+    year_spearman = detail.groupby(YEAR_COL).apply(
+        lambda group: spearmanr(group["pooled_reference_score"], group["rolling_5yr_score"]).statistic,
+        include_groups=False,
+    )
+    return pd.DataFrame(
+        [
+            ("Pooled reconstruction", "N", validation.n, "All reference observations reconstructed"),
+            (
+                "Pooled reconstruction",
+                "Frontier observations (reference / reconstructed)",
+                f"{validation.n_frontier_reference} / {validation.n_frontier_reconstructed}",
+                "Efficient-set classification is identical",
+            ),
+            ("Pooled reconstruction", "Mean absolute error", validation.mean_abs_error, "Numerical agreement with reference scores"),
+            (
+                "Pooled reconstruction",
+                "Maximum absolute error",
+                validation.max_abs_error,
+                "Below the pre-specified 5e-5 validation threshold",
+            ),
+            (
+                "Pooled reconstruction",
+                "Pearson / Spearman",
+                f"{validation.pearson:.12f} / {validation.spearman:.12f}",
+                "Score and rank agreement",
+            ),
+            ("Five-year local window", "Effective N", int(rolling.notna().sum()), "No infeasible observation"),
+            (
+                "Five-year local window",
+                "Scores at or above 1",
+                int((rolling >= 1.0).sum()),
+                "A smaller local reference set identifies more local-frontier observations",
+            ),
+            (
+                "Five-year local window",
+                "Overall Pearson / Spearman",
+                f"{pearsonr(pooled, rolling).statistic:.6f} / {spearmanr(pooled, rolling).statistic:.6f}",
+                "Overall association mixes level and time effects",
+            ),
+            (
+                "Five-year local window",
+                "Mean / median within-year Spearman",
+                f"{year_spearman.mean():.6f} / {year_spearman.median():.6f}",
+                "Within-year provincial ordering is more stable than pooled level agreement",
+            ),
+            (
+                "Five-year local window",
+                "Mean / median absolute score difference",
+                f"{(rolling - pooled).abs().mean():.6f} / {(rolling - pooled).abs().median():.6f}",
+                "Absolute efficiency levels are sensitive to frontier choice",
+            ),
+            (
+                "Five-year local window",
+                "Mean / median absolute rank difference",
+                f"{detail['absolute_rank_difference'].mean():.3f} / {detail['absolute_rank_difference'].median():.3f}",
+                "Typical within-year rank movement is limited",
+            ),
+            (
+                "Method note",
+                "Reference set",
+                "Target year +/-2",
+                "At sample endpoints, available years are used (3 or 4 years).",
+            ),
+            (
+                "Method note",
+                "DEA specification",
+                "Non-oriented undesirable-output Super-SBM; VRS; equal weights",
+                "Matches the documented pooled-frontier settings.",
+            ),
+            (
+                "Interpretation",
+                "Supported statement",
+                "Absolute levels are frontier-sensitive; within-year ranks are more stable",
+                "Use as a sensitivity result, not as confirmation that frontier choice is immaterial.",
+            ),
+            (
+                "Interpretation",
+                "Not estimated",
+                "Malmquist or policy effects",
+                "The check does not estimate dynamic productivity or causal policy effects.",
+            ),
+        ],
+        columns=["Section", "Metric", "Value", "Interpretation"],
+    )
+
+
+def _export_workbook(detail: pd.DataFrame, validation: ValidationResult, path: Path) -> None:
+    year_summary = _build_year_summary(detail)
+    summary = _build_workbook_summary(detail, validation)
+    readme = pd.DataFrame(
+        [
+            ("Purpose", "Assess sensitivity of pooled global-frontier Super-SBM scores to a five-year local reference frontier."),
+            ("Baseline", "The efficiency column in data.xlsx contains the pooled global-frontier reference scores."),
+            (
+                "Validation gate",
+                "The Python solver must reconstruct all 720 pooled scores, match the 52 frontier observations, achieve Spearman >= 0.999999, and have maximum absolute error <= 5e-5.",
+            ),
+            (
+                "Window definition",
+                "For each target province-year, the reference set uses the target year +/-2; at 2000-2001 and 2022-2023 the available endpoint years are used.",
+            ),
+            ("Inputs", "TPAM, EIA, CS, AFA, PU, ADY, PFU, and PIE (legacy code column NRP)."),
+            ("Outputs", "GAO is the desirable output and CEA is the undesirable output."),
+            (
+                "Model",
+                "Original non-oriented undesirable-output Super-SBM under VRS with equal weights (Qx=0.125 each; Qy=0.5; Qb=0.5).",
+            ),
+            ("Code", "super_sbm_rolling_frontier.py"),
+            (
+                "Interpretation boundary",
+                "This is a reference-frontier sensitivity check. It is not Malmquist analysis, a dynamic productivity decomposition, a policy simulation, or a causal estimate.",
+            ),
+        ],
+        columns=["Item", "Description"],
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        detail.to_excel(writer, sheet_name="score_detail", index=False)
+        summary.to_excel(writer, sheet_name="summary", index=False)
+        year_summary.to_excel(writer, sheet_name="year_summary", index=False)
+        readme.to_excel(writer, sheet_name="ReadMe", index=False)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=DEFAULT_DATA)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--workbook-output", type=Path, default=DEFAULT_WORKBOOK)
     return parser.parse_args()
 
 
@@ -404,6 +577,8 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     detail.to_csv(args.output, index=False, encoding="utf-8-sig", float_format="%.12g")
     print(f"Saved: {args.output}")
+    _export_workbook(detail, validation, args.workbook_output)
+    print(f"Saved: {args.workbook_output}")
 
 
 if __name__ == "__main__":
