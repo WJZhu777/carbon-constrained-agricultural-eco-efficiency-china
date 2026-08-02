@@ -88,6 +88,8 @@ The eight input weights are `0.125` each. The desirable-output and undesirable-o
 
 ## Environment
 
+The reference environment used for the reported results ran Python `3.12.3`. Exact package versions are pinned in `requirements.txt` to make the neural-network and XGBoost execution paths explicit.
+
 Create an isolated Python environment and install the declared dependencies:
 
 ```bash
@@ -140,7 +142,7 @@ Run commands from the repository root.
 
 `eco_efficiency_results.py` requires `tables/Scenario_analysis_full_2023.xlsx`, which is produced by the main notebook. The frontier script stops before the local-window calculation if its pooled-frontier reconstruction does not pass the built-in validation gate.
 
-Some generated workbooks retain filenames ending in `_revision`. These stable filenames are preserved solely to maintain exact links with the archived Online Resources; they do not represent a separate model specification or development branch.
+Some generated workbooks retain filenames ending in `_revision`. These stable filenames match the corresponding supplementary workbooks and do not represent a separate model specification.
 
 ## Validation design
 
