@@ -49,7 +49,7 @@ The principal generated workbooks include:
 |---|---|---|
 | `ID` | Province identifier | 1-30 |
 | `Year` | Observation year | 2000-2023 |
-| `TPAM` | Total power of agricultural machinery | million kW |
+| `TPAM` | Total power of agricultural machinery | 10,000 kW |
 | `EIA` | Effective irrigated area | 1,000 ha |
 | `CS` | Crops sown | 1,000 ha |
 | `AFA` | Agricultural fertilizer application | 10,000 tonnes |

@@ -749,7 +749,7 @@ def make_perturbation_assets_from_pipeline(df: pd.DataFrame, dirs: Dict[str, str
             edgecolor="none",
         )
 
-    ax.set_xlabel("Δ eco-efficiency (perturbation − baseline)")
+    ax.set_xlabel("Surrogate-predicted score change (perturbation − baseline)")
     ax.set_ylabel("Count (provinces)")
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
     ax.grid(axis="y", linewidth=0.4, alpha=0.35)
