@@ -8,7 +8,7 @@ The analysis covers 30 mainland Chinese provinces from 2000 to 2023. It combines
 
 The repository supports four connected tasks:
 
-1. use pooled global-frontier Super-SBM scores as the reference efficiency labels;
+1. compute pooled global-frontier Super-SBM scores and use them as the efficiency labels;
 2. compare machine-learning models for approximating those labels;
 3. evaluate model behavior under random, rolling time-forward, province-block, and predictor-ablation designs;
 4. examine standardized input-output perturbations and alternative-frontier sensitivity.
@@ -24,7 +24,7 @@ The machine-learning layer is a surrogate for DEA-generated labels. Its outputs 
 | `predictor_ablation_analysis.py` | Predictor-group ablation under random and rolling time-forward evaluation. |
 | `panel_validation_postprocess.py` | Canonical aggregation of panel-aware validation outputs. It is called by the main notebook. |
 | `eco_efficiency_results.py` | Descriptive indicators, figures, inequality and rank-persistence summaries, and province-level screening profiles. |
-| `super_sbm_rolling_frontier.py` | Independent Python reconstruction check and centered five-year local-window frontier analysis, including CSV and Excel summary exports. |
+| `super_sbm_rolling_frontier.py` | Python implementation of the pooled global common frontier and centered five-year local-window frontier, including CSV and Excel summary exports. |
 | `requirements.txt` | Python dependencies. |
 
 Generated figures and workbooks are written to `fig/`, `tables/`, and `results_story/`. These directories are excluded from version control because they can be regenerated from the tracked inputs and code. Frozen copies of the detailed workbooks used in the article are supplied separately as Online Resource 2; they are not mirrored in the GitHub repository.
@@ -39,7 +39,7 @@ The principal generated workbooks include:
 | `tables/Panel_dependence_robustness_checks_reaggregated.xlsx` | Canonical model-name aggregation across panel-validation outputs. |
 | `tables/Surrogate_predictor_ablation_revision.xlsx` | Predictor-group ablation summaries and split-level results. |
 | `tables/Scenario_analysis_full_2023.xlsx` | Province-level outputs for the three standardized 2023 perturbations. |
-| `tables/Alternative_frontier_robustness_revision.xlsx` | Pooled-frontier reconstruction and five-year local-window sensitivity results. |
+| `tables/Alternative_frontier_robustness_revision.xlsx` | Pooled global-frontier and five-year local-window sensitivity results. |
 
 ## Data structure
 
@@ -72,7 +72,7 @@ The carbon-emission indicator is constructed from fertilizer, pesticide, plastic
 
 `data.xlsx` is the canonical analysis panel rather than a collection of unprocessed source workbooks. Full source citations, coefficient references, measurement boundaries, and unit-conversion rules are documented in the associated article and Online Resources.
 
-## Super-SBM score construction and verification
+## Super-SBM score construction
 
 The baseline `efficiency` scores in `data.xlsx` use the following specification:
 
@@ -84,7 +84,7 @@ The baseline `efficiency` scores in `data.xlsx` use the following specification:
 - pooled global frontier;
 - equal weights across eight inputs, one desirable output, and one undesirable output.
 
-The eight input weights are `0.125` each. The desirable-output and undesirable-output weights are `0.5` each. The Python frontier implementation reconstructs the pooled scores from the panel variables in `data.xlsx`, compares them with the `efficiency` reference column, and applies the same specification to the alternative-frontier sensitivity analysis. It does not overwrite the reference scores in `data.xlsx`.
+The eight input weights are `0.125` each. The desirable-output and undesirable-output weights are `0.5` each. All pooled global-frontier and five-year local-window Super-SBM scores are computed using the Python implementation developed for this study. The pooled global common frontier produces the main `efficiency` labels, and the same model specification is applied to target-year +/-2 local reference sets for the sensitivity analysis.
 
 ## Environment
 
@@ -132,7 +132,7 @@ Run commands from the repository root.
    python eco_efficiency_results.py
    ```
 
-5. Validate the Python pooled-frontier reconstruction and compute the centered five-year local-window sensitivity results:
+5. Compute the pooled global-frontier scores and centered five-year local-window sensitivity results:
 
    ```bash
    python super_sbm_rolling_frontier.py
@@ -140,7 +140,7 @@ Run commands from the repository root.
 
    This command writes both `tables/rolling_5yr_frontier_robustness_revision.csv` and `tables/Alternative_frontier_robustness_revision.xlsx`.
 
-`eco_efficiency_results.py` requires `tables/Scenario_analysis_full_2023.xlsx`, which is produced by the main notebook. The frontier script stops before the local-window calculation if its pooled-frontier reconstruction does not pass the built-in validation gate.
+`eco_efficiency_results.py` requires `tables/Scenario_analysis_full_2023.xlsx`, which is produced by the main notebook. Before the local-window calculation, the frontier script checks that the stored pooled output remains numerically consistent with the documented Python specification. This is an internal integrity check within the same implementation, not a comparison with external DEA software or an independently generated benchmark.
 
 Some generated workbooks retain filenames ending in `_revision`. These stable filenames match the corresponding supplementary workbooks and do not represent a separate model specification.
 
@@ -164,7 +164,7 @@ Results from these designs are not directly interchangeable because they use dif
 - The main notebook imports `fix_panel_reaggregation` from `panel_validation_postprocess.py` to harmonize model names and aggregate panel-validation outputs.
 - The XGBoost surrogate uses the documented monotonic directions for the ten predictors.
 - The 2023 scenario workbook is generated with the fitted validation-weighted linear blend (VWLB), which combines monotone XGBoost and TSLR-MLP from the main random holdout pipeline. Each reported `Delta` is the VWLB prediction for the perturbed profile minus the VWLB prediction for the observed profile.
-- The `efficiency` column in `data.xlsx` contains the reference scores; the Python Super-SBM implementation is used for reconstruction checks and alternative-frontier sensitivity.
+- The `efficiency` column in `data.xlsx` contains the pooled global-frontier scores computed by the Python Super-SBM implementation; the same implementation is used for five-year local-window sensitivity analysis.
 - Local paths, author-specific directories, and manuscript-management files are not required by the workflow.
 
 ## Interpretation boundary
